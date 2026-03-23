@@ -9,7 +9,7 @@
   <title>Store Check</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <div id="app">
@@ -109,12 +109,18 @@
   </div>
 
   <script src="lib/jspdf.umd.min.js"></script>
-  <script src="airtable.js"></script>
-  <script src="offline.js"></script>
-  <script src="app.js"></script>
+  <script src="airtable.js?v=9"></script>
+  <script src="offline.js?v=9"></script>
+  <script src="app.js?v=9"></script>
   <script>
+    // Force unregister old service workers and clear caches on load
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js');
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      });
+      caches.keys().then(keys => {
+        keys.forEach(k => caches.delete(k));
+      });
     }
   </script>
 </body>

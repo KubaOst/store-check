@@ -157,17 +157,19 @@ const app = {
 
       empty.classList.add('hidden');
 
-      const noPhoto = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><rect width="72" height="72" fill="#232340"/><text x="36" y="40" text-anchor="middle" fill="#666" font-size="12">brak</text></svg>');
       const cards = [];
       for (const e of entries) {
         const f = e.fields;
         const photos = await PhotoStore.getPhotos(e.id);
-        const thumbSrc = photos[0] || noPhoto;
+        const hasPhoto = photos.length > 0 && photos[0];
+        const thumbHtml = hasPhoto
+          ? `<img class="entry-thumb" src="${photos[0]}" alt="">`
+          : `<div class="entry-thumb no-photo">brak</div>`;
         const photoCount = photos.length > 1 ? `<div class="photo-count">${photos.length}</div>` : '';
         cards.push(`
           <div class="entry-card" onclick="app.openEntry('${e.id}')">
             <div class="entry-thumb-wrap">
-              <img class="entry-thumb" src="${thumbSrc}" alt="">
+              ${thumbHtml}
               ${photoCount}
             </div>
             <div class="entry-info">

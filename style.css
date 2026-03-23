@@ -244,6 +244,13 @@ input:focus { border-color: var(--primary); }
   object-fit: cover;
   background: var(--surface2);
 }
+.entry-thumb.no-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text2);
+  font-size: 11px;
+}
 .photo-count {
   position: absolute;
   bottom: 2px;
