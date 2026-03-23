@@ -146,34 +146,54 @@ input:focus { border-color: var(--primary); }
   line-height: 1.5;
 }
 
-/* Photo preview */
-.photo-preview {
-  width: 100%;
-  aspect-ratio: 4/3;
-  background: var(--surface2);
-  border-radius: var(--radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+/* Photos grid */
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.photos-grid .photo-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
   overflow: hidden;
-  border: 2px dashed var(--text2);
-  transition: border-color 0.2s;
 }
-.photo-preview:active { border-color: var(--primary); }
-.photo-preview span {
-  color: var(--text2);
-  font-size: 15px;
-}
-.photo-preview img {
+.photos-grid .photo-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.photo-preview img:not(.hidden) + span { display: none; }
-.photo-preview:has(img:not(.hidden)) {
-  border-style: solid;
-  border-color: transparent;
+.photos-grid .photo-thumb .photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0,0,0,0.6);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+}
+.photo-add {
+  aspect-ratio: 1;
+  background: var(--surface2);
+  border: 2px dashed var(--text2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.photo-add:active { border-color: var(--primary); }
+.photo-add span {
+  font-size: 32px;
+  color: var(--text2);
 }
 
 /* Session card */
@@ -213,13 +233,27 @@ input:focus { border-color: var(--primary); }
   transition: background 0.15s;
 }
 .entry-card:active { background: var(--surface); }
+.entry-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
 .entry-thumb {
   width: 72px;
   height: 72px;
   border-radius: 8px;
   object-fit: cover;
   background: var(--surface2);
-  flex-shrink: 0;
+}
+.photo-count {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
 }
 .entry-info { flex: 1; min-width: 0; }
 .entry-brand { font-weight: 600; font-size: 15px; }

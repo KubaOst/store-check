@@ -37,29 +37,29 @@ const PhotoStore = {
     });
   },
 
-  // --- Photos (keyed by Airtable entry record ID or local ID) ---
+  // --- Photos (array of base64 per entry ID) ---
 
-  async savePhoto(id, base64) {
+  async savePhotos(id, photosArray) {
     await this.init();
     return new Promise((resolve, reject) => {
       const tx = this._db.transaction('photos', 'readwrite');
-      tx.objectStore('photos').put({ id, base64 });
+      tx.objectStore('photos').put({ id, photos: photosArray });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
   },
 
-  async getPhoto(id) {
+  async getPhotos(id) {
     await this.init();
     return new Promise((resolve, reject) => {
       const tx = this._db.transaction('photos', 'readonly');
       const req = tx.objectStore('photos').get(id);
-      req.onsuccess = () => resolve(req.result?.base64 || null);
+      req.onsuccess = () => resolve(req.result?.photos || req.result?.base64 ? [req.result.base64] : []);
       req.onerror = () => reject(req.error);
     });
   },
 
-  async deletePhoto(id) {
+  async deletePhotos(id) {
     await this.init();
     return new Promise((resolve, reject) => {
       const tx = this._db.transaction('photos', 'readwrite');

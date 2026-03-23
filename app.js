@@ -1,7 +1,7 @@
 const app = {
-  currentSession: null, // session name string
+  currentSession: null,
   currentEntryId: null,
-  pendingPhoto: null, // base64
+  pendingPhotos: [], // array of base64
 
   // --- Init ---
 
@@ -77,7 +77,7 @@ const app = {
     document.getElementById('loading').classList.add('hidden');
   },
 
-  // --- Sessions (grouped by Session field) ---
+  // --- Sessions ---
 
   async loadSessions() {
     try {
@@ -134,14 +134,19 @@ const app = {
 
       empty.classList.add('hidden');
 
+      const noPhoto = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><rect width="72" height="72" fill="#232340"/><text x="36" y="40" text-anchor="middle" fill="#666" font-size="12">brak</text></svg>');
       const cards = [];
       for (const e of entries) {
         const f = e.fields;
-        const photo = await PhotoStore.getPhoto(e.id);
-        const thumbSrc = photo || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" fill="%23333"><rect width="72" height="72"/><text x="36" y="40" text-anchor="middle" fill="%23666" font-size="12">brak</text></svg>';
+        const photos = await PhotoStore.getPhotos(e.id);
+        const thumbSrc = photos[0] || noPhoto;
+        const photoCount = photos.length > 1 ? `<div class="photo-count">${photos.length}</div>` : '';
         cards.push(`
           <div class="entry-card" onclick="app.openEntry('${e.id}')">
-            <img class="entry-thumb" src="${thumbSrc}" alt="">
+            <div class="entry-thumb-wrap">
+              <img class="entry-thumb" src="${thumbSrc}" alt="">
+              ${photoCount}
+            </div>
             <div class="entry-info">
               <div class="entry-brand">${this.esc(f.Brand || '')}</div>
               <div class="entry-dist">${this.esc(f.Distributor || '')}</div>
@@ -160,23 +165,21 @@ const app = {
 
   showAddForm() {
     this.currentEntryId = null;
-    this.pendingPhoto = null;
+    this.pendingPhotos = [];
     document.getElementById('form-title').textContent = 'Nowy wpis';
     document.getElementById('delete-btn').classList.add('hidden');
-    document.getElementById('preview-img').classList.add('hidden');
-    document.getElementById('preview-img').src = '';
-    document.querySelector('#photo-preview span').textContent = 'Kliknij aby zrobic zdjecie';
     document.getElementById('field-brand').value = '';
     document.getElementById('field-distributor').value = '';
     document.getElementById('field-www').value = '';
     document.getElementById('form-status').textContent = '';
     document.getElementById('photo-input').value = '';
+    this.renderPhotosGrid();
     this.showScreen('form');
   },
 
   async openEntry(id) {
     this.currentEntryId = id;
-    this.pendingPhoto = await PhotoStore.getPhoto(id);
+    this.pendingPhotos = await PhotoStore.getPhotos(id);
     document.getElementById('form-title').textContent = 'Edycja';
     document.getElementById('delete-btn').classList.remove('hidden');
 
@@ -191,18 +194,34 @@ const app = {
       }
     } catch (e) { /* offline */ }
 
-    if (this.pendingPhoto) {
-      const img = document.getElementById('preview-img');
-      img.src = this.pendingPhoto;
-      img.classList.remove('hidden');
-    } else {
-      document.getElementById('preview-img').classList.add('hidden');
-      document.querySelector('#photo-preview span').textContent = 'Kliknij aby zmienic zdjecie';
-    }
-
     document.getElementById('form-status').textContent = '';
     document.getElementById('photo-input').value = '';
+    this.renderPhotosGrid();
     this.showScreen('form');
+  },
+
+  renderPhotosGrid() {
+    const grid = document.getElementById('photos-grid');
+    let html = '';
+    this.pendingPhotos.forEach((photo, i) => {
+      html += `
+        <div class="photo-thumb">
+          <img src="${photo}" alt="">
+          <button class="photo-remove" onclick="event.stopPropagation(); app.removePhoto(${i})">✕</button>
+        </div>
+      `;
+    });
+    html += `
+      <div class="photo-add" onclick="document.getElementById('photo-input').click()">
+        <span>+</span>
+      </div>
+    `;
+    grid.innerHTML = html;
+  },
+
+  removePhoto(index) {
+    this.pendingPhotos.splice(index, 1);
+    this.renderPhotosGrid();
   },
 
   hideForm() {
@@ -214,10 +233,10 @@ const app = {
     const file = event.target.files[0];
     if (!file) return;
     const base64 = await compressImage(file, 1200, 0.85);
-    this.pendingPhoto = base64;
-    const img = document.getElementById('preview-img');
-    img.src = base64;
-    img.classList.remove('hidden');
+    this.pendingPhotos.push(base64);
+    this.renderPhotosGrid();
+    // Reset input so same file can be selected again
+    document.getElementById('photo-input').value = '';
   },
 
   async saveEntry() {
@@ -232,8 +251,8 @@ const app = {
       return;
     }
 
-    if (!this.pendingPhoto && !this.currentEntryId) {
-      status.textContent = 'Dodaj zdjecie';
+    if (this.pendingPhotos.length === 0 && !this.currentEntryId) {
+      status.textContent = 'Dodaj przynajmniej jedno zdjecie';
       status.className = 'status-err';
       return;
     }
@@ -245,9 +264,7 @@ const app = {
         if (this.currentEntryId) {
           const fields = { Brand: brand, Distributor: distributor || '', WWW: www || '' };
           await AirtableAPI.updateEntry(this.currentEntryId, fields);
-          if (this.pendingPhoto) {
-            await PhotoStore.savePhoto(this.currentEntryId, this.pendingPhoto);
-          }
+          await PhotoStore.savePhotos(this.currentEntryId, this.pendingPhotos);
         } else {
           const entry = await AirtableAPI.createEntry({
             session: this.currentSession,
@@ -255,9 +272,7 @@ const app = {
             distributor,
             www,
           });
-          if (this.pendingPhoto) {
-            await PhotoStore.savePhoto(entry.id, this.pendingPhoto);
-          }
+          await PhotoStore.savePhotos(entry.id, this.pendingPhotos);
         }
       } else {
         await PhotoStore.addToQueue({
@@ -265,7 +280,7 @@ const app = {
           brand,
           distributor,
           www,
-          photoBase64: this.pendingPhoto,
+          photos: this.pendingPhotos,
         });
         this.updateOfflineCount();
       }
@@ -287,7 +302,7 @@ const app = {
     this.showLoading('Usuwanie...');
     try {
       await AirtableAPI.deleteEntry(this.currentEntryId);
-      await PhotoStore.deletePhoto(this.currentEntryId);
+      await PhotoStore.deletePhotos(this.currentEntryId);
       this.hideLoading();
       this.hideForm();
     } catch (e) {
@@ -328,35 +343,20 @@ const app = {
       doc.setTextColor(0);
 
       let y = 45;
-      const photoMaxH = 90;
+      const photoMaxH = 80;
       const spacing = 10;
 
       for (let i = 0; i < entries.length; i++) {
         const f = entries[i].fields;
-        const photoBase64 = await PhotoStore.getPhoto(entries[i].id);
+        const photos = await PhotoStore.getPhotos(entries[i].id);
 
-        if (y + photoMaxH + 20 > pageH - margin) {
+        // Brand header
+        if (y + 30 > pageH - margin) {
           doc.addPage();
           y = margin;
         }
 
-        if (photoBase64) {
-          try {
-            const imgProps = doc.getImageProperties(photoBase64);
-            let imgW = usableW;
-            let imgH = (imgProps.height / imgProps.width) * imgW;
-            if (imgH > photoMaxH) {
-              imgH = photoMaxH;
-              imgW = (imgProps.width / imgProps.height) * imgH;
-            }
-            doc.addImage(photoBase64, 'JPEG', margin + (usableW - imgW) / 2, y, imgW, imgH);
-            y += imgH + 3;
-          } catch (e) {
-            y += 5;
-          }
-        }
-
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.text(f.Brand || '—', margin, y + 5);
 
@@ -366,8 +366,31 @@ const app = {
         const parts = [f.Distributor, f.WWW].filter(Boolean);
         if (parts.length) doc.text(parts.join('  |  '), margin, y + 11);
         doc.setTextColor(0);
-
         y += 16;
+
+        // Photos for this entry
+        for (const photoBase64 of photos) {
+          if (y + photoMaxH + 5 > pageH - margin) {
+            doc.addPage();
+            y = margin;
+          }
+
+          try {
+            const imgProps = doc.getImageProperties(photoBase64);
+            let imgW = usableW;
+            let imgH = (imgProps.height / imgProps.width) * imgW;
+            if (imgH > photoMaxH) {
+              imgH = photoMaxH;
+              imgW = (imgProps.width / imgProps.height) * imgH;
+            }
+            doc.addImage(photoBase64, 'JPEG', margin + (usableW - imgW) / 2, y, imgW, imgH);
+            y += imgH + 5;
+          } catch (e) {
+            y += 5;
+          }
+        }
+
+        // Separator
         doc.setDrawColor(220);
         doc.line(margin, y, pageW - margin, y);
         y += spacing;
@@ -435,7 +458,7 @@ const app = {
           distributor: item.distributor,
           www: item.www,
         });
-        if (item.photoBase64) await PhotoStore.savePhoto(entry.id, item.photoBase64);
+        if (item.photos?.length) await PhotoStore.savePhotos(entry.id, item.photos);
         await PhotoStore.removeFromQueue(item.localId);
       } catch (e) {
         break;

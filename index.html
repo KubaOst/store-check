@@ -73,9 +73,10 @@
         <button class="icon-btn danger hidden" id="delete-btn" onclick="app.deleteEntry()">&#128465;</button>
       </header>
       <div class="content pad">
-        <div id="photo-preview" class="photo-preview" onclick="document.getElementById('photo-input').click()">
-          <span>Kliknij aby zrobić zdjęcie</span>
-          <img id="preview-img" class="hidden">
+        <div id="photos-grid" class="photos-grid">
+          <div class="photo-add" onclick="document.getElementById('photo-input').click()">
+            <span>+</span>
+          </div>
         </div>
         <input type="file" id="photo-input" accept="image/*" capture="environment" class="hidden" onchange="app.onPhotoSelected(event)">
 
