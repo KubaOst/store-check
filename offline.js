@@ -112,10 +112,9 @@ const PhotoStore = {
   },
 };
 
-// Image compression utility with iOS error handling
+// Image compression + 16:9 crop utility with iOS error handling
 function compressImage(file, maxWidth = 800, quality = 0.75) {
   return new Promise((resolve, reject) => {
-    // Fallback: if anything fails, try to return raw data URL
     const fallback = () => {
       const r = new FileReader();
       r.onload = (e) => resolve(e.target.result);
@@ -131,19 +130,37 @@ function compressImage(file, maxWidth = 800, quality = 0.75) {
         img.onerror = fallback;
         img.onload = () => {
           try {
-            const canvas = document.createElement('canvas');
-            let w = img.width;
-            let h = img.height;
-            if (w > maxWidth) {
-              h = (h * maxWidth) / w;
-              w = maxWidth;
+            let sw = img.width;
+            let sh = img.height;
+
+            // Crop to 16:9 from center
+            const targetRatio = 16 / 9;
+            const srcRatio = sw / sh;
+            let cropX = 0, cropY = 0, cropW = sw, cropH = sh;
+            if (srcRatio > targetRatio) {
+              // Too wide — crop sides
+              cropW = Math.round(sh * targetRatio);
+              cropX = Math.round((sw - cropW) / 2);
+            } else {
+              // Too tall — crop top/bottom
+              cropH = Math.round(sw / targetRatio);
+              cropY = Math.round((sh - cropH) / 2);
             }
-            canvas.width = w;
-            canvas.height = h;
+
+            // Scale down
+            let outW = cropW;
+            let outH = cropH;
+            if (outW > maxWidth) {
+              outH = Math.round((outH * maxWidth) / outW);
+              outW = maxWidth;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = outW;
+            canvas.height = outH;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
+            ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, outW, outH);
             const result = canvas.toDataURL('image/jpeg', quality);
-            // Verify we got a valid data URL
             if (result && result.length > 100) {
               resolve(result);
             } else {
