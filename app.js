@@ -105,10 +105,11 @@ const app = {
     }
   },
 
-  async createSession() {
+  createSession() {
     const today = new Date().toLocaleDateString('pl');
-    const name = `Store Check ${today}`;
-    this.openSession(name);
+    const name = prompt('Nazwa sesji:', `Store Check ${today}`);
+    if (!name || !name.trim()) return;
+    this.openSession(name.trim());
   },
 
   openSession(name) {
