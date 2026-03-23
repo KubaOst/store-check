@@ -8,7 +8,24 @@ const app = {
   async init() {
     await PhotoStore.init();
     this.loadSettings();
-    if (AirtableAPI.isConfigured()) {
+
+    // Check if returning from camera (iOS kills PWA when camera opens)
+    const draft = await this.loadDraft();
+    if (draft) {
+      this.currentSession = draft.session;
+      this.currentEntryId = draft.entryId;
+      this.pendingPhotos = draft.photos || [];
+      document.getElementById('entries-title').textContent = draft.session;
+      document.getElementById('form-title').textContent = draft.entryId ? 'Edycja' : 'Nowy wpis';
+      document.getElementById('field-brand').value = draft.brand || '';
+      document.getElementById('field-distributor').value = draft.distributor || '';
+      document.getElementById('field-www').value = draft.www || '';
+      if (draft.entryId) document.getElementById('delete-btn').classList.remove('hidden');
+      else document.getElementById('delete-btn').classList.add('hidden');
+      this.renderPhotosGrid();
+      this.showScreen('form');
+      this.loadAutocomplete();
+    } else if (AirtableAPI.isConfigured()) {
       this.showScreen('sessions');
       this.loadSessions();
       this.loadAutocomplete();
@@ -218,11 +235,17 @@ const app = {
       `;
     });
     html += `
-      <div class="photo-add" onclick="document.getElementById('photo-input').click()">
+      <div class="photo-add" onclick="app.openCamera()">
         <span>+</span>
       </div>
     `;
     grid.innerHTML = html;
+  },
+
+  async openCamera() {
+    // Save draft before opening camera — iOS may kill PWA
+    await this.saveDraft();
+    document.getElementById('photo-input').click();
   },
 
   removePhoto(index) {
@@ -230,7 +253,8 @@ const app = {
     this.renderPhotosGrid();
   },
 
-  hideForm() {
+  async hideForm() {
+    await this.clearDraft();
     this.showScreen('entries');
     this.loadEntries();
   },
@@ -243,6 +267,8 @@ const app = {
     this.renderPhotosGrid();
     // Reset input so same file can be selected again
     document.getElementById('photo-input').value = '';
+    // Save draft with new photo in case iOS kills PWA
+    await this.saveDraft();
   },
 
   async saveEntry() {
@@ -292,7 +318,9 @@ const app = {
       }
 
       this.hideLoading();
-      this.hideForm();
+      await this.clearDraft();
+      this.showScreen('entries');
+      this.loadEntries();
       this.loadAutocomplete();
     } catch (e) {
       this.hideLoading();
@@ -309,8 +337,10 @@ const app = {
     try {
       await AirtableAPI.deleteEntry(this.currentEntryId);
       await PhotoStore.deletePhotos(this.currentEntryId);
+      await this.clearDraft();
       this.hideLoading();
-      this.hideForm();
+      this.showScreen('entries');
+      this.loadEntries();
     } catch (e) {
       this.hideLoading();
       alert('Blad: ' + e.message);
@@ -471,6 +501,38 @@ const app = {
       }
     }
     this.updateOfflineCount();
+  },
+
+  // --- Draft persistence (survives iOS PWA camera kill) ---
+
+  async saveDraft() {
+    const draft = {
+      session: this.currentSession,
+      entryId: this.currentEntryId,
+      brand: document.getElementById('field-brand').value,
+      distributor: document.getElementById('field-distributor').value,
+      www: document.getElementById('field-www').value,
+      photos: this.pendingPhotos,
+    };
+    try {
+      await PhotoStore.savePhotos('__draft__', draft.photos);
+      const meta = { ...draft, photos: undefined }; // don't store photos in sessionStorage
+      sessionStorage.setItem('sc_draft', JSON.stringify(meta));
+    } catch (e) { /* silent */ }
+  },
+
+  async loadDraft() {
+    try {
+      const meta = JSON.parse(sessionStorage.getItem('sc_draft'));
+      if (!meta) return null;
+      const photos = await PhotoStore.getPhotos('__draft__');
+      return { ...meta, photos };
+    } catch (e) { return null; }
+  },
+
+  async clearDraft() {
+    sessionStorage.removeItem('sc_draft');
+    await PhotoStore.deletePhotos('__draft__').catch(() => {});
   },
 
   // --- Helpers ---
