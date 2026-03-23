@@ -112,28 +112,52 @@ const PhotoStore = {
   },
 };
 
-// Image compression utility
-function compressImage(file, maxWidth = 800, quality = 0.8) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width;
-        let h = img.height;
-        if (w > maxWidth) {
-          h = (h * maxWidth) / w;
-          w = maxWidth;
-        }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.src = e.target.result;
+// Image compression utility with iOS error handling
+function compressImage(file, maxWidth = 800, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    // Fallback: if anything fails, try to return raw data URL
+    const fallback = () => {
+      const r = new FileReader();
+      r.onload = (e) => resolve(e.target.result);
+      r.onerror = () => reject(new Error('Cannot read file'));
+      r.readAsDataURL(file);
     };
-    reader.readAsDataURL(file);
+
+    try {
+      const reader = new FileReader();
+      reader.onerror = fallback;
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = fallback;
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = (h * maxWidth) / w;
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const result = canvas.toDataURL('image/jpeg', quality);
+            // Verify we got a valid data URL
+            if (result && result.length > 100) {
+              resolve(result);
+            } else {
+              fallback();
+            }
+          } catch (err) {
+            fallback();
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      fallback();
+    }
   });
 }

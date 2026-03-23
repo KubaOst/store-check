@@ -1,4 +1,4 @@
-const CACHE_NAME = 'store-check-v7';
+const CACHE_NAME = 'store-check-v8';
 const ASSETS = [
   './',
   './index.html',

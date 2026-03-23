@@ -242,10 +242,11 @@ const app = {
     grid.innerHTML = html;
   },
 
-  async openCamera() {
-    // Save draft before opening camera — iOS may kill PWA
-    await this.saveDraft();
+  openCamera() {
+    // Click FIRST (must be synchronous for iOS user gesture chain)
     document.getElementById('photo-input').click();
+    // Then save draft async (in case iOS kills PWA while camera is open)
+    this.saveDraft();
   },
 
   removePhoto(index) {
@@ -260,15 +261,19 @@ const app = {
   },
 
   async onPhotoSelected(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const base64 = await compressImage(file, 1200, 0.85);
-    this.pendingPhotos.push(base64);
-    this.renderPhotosGrid();
-    // Reset input so same file can be selected again
-    document.getElementById('photo-input').value = '';
-    // Save draft with new photo in case iOS kills PWA
-    await this.saveDraft();
+    try {
+      const file = event.target.files[0];
+      if (!file) return;
+      const base64 = await compressImage(file, 800, 0.75);
+      this.pendingPhotos.push(base64);
+      this.renderPhotosGrid();
+      // Reset input so same file can be selected again
+      document.getElementById('photo-input').value = '';
+      // Save draft with new photo in case iOS kills PWA
+      await this.saveDraft();
+    } catch (e) {
+      alert('Blad zdjecia: ' + e.message);
+    }
   },
 
   async saveEntry() {
