@@ -119,6 +119,11 @@ const app = {
     this.loadEntries();
   },
 
+  backToSessions() {
+    this.showScreen('sessions');
+    this.loadSessions();
+  },
+
   // --- Entries ---
 
   async loadEntries() {
