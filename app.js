@@ -265,16 +265,17 @@ const app = {
   async onPhotoSelected(event) {
     try {
       const file = event.target.files[0];
-      if (!file) return;
+      if (!file) { alert('DEBUG: brak pliku'); return; }
+      alert('DEBUG 1: plik OK, rozmiar=' + file.size + ', typ=' + file.type);
       const base64 = await compressImage(file, 800, 0.75);
+      alert('DEBUG 2: kompresja OK, dlugosc=' + base64.length);
       this.pendingPhotos.push(base64);
       this.renderPhotosGrid();
-      // Reset input so same file can be selected again
       document.getElementById('photo-input').value = '';
-      // Save draft with new photo in case iOS kills PWA
       await this.saveDraft();
+      alert('DEBUG 3: zapisano, zdjec w formularzu=' + this.pendingPhotos.length);
     } catch (e) {
-      alert('Blad zdjecia: ' + e.message);
+      alert('BLAD zdjecia: ' + e.message + '\n' + e.stack);
     }
   },
 
@@ -291,10 +292,12 @@ const app = {
     }
 
     if (this.pendingPhotos.length === 0 && !this.currentEntryId) {
+      alert('DEBUG SAVE: pendingPhotos puste! Zdjecia nie zostaly dodane do formularza.');
       status.textContent = 'Dodaj przynajmniej jedno zdjecie';
       status.className = 'status-err';
       return;
     }
+    alert('DEBUG SAVE: zapisuje ' + this.pendingPhotos.length + ' zdjec');
 
     this.showLoading('Zapisywanie...');
 
