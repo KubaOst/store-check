@@ -149,13 +149,13 @@ input:focus { border-color: var(--primary); }
 /* Photos grid */
 .photos-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-bottom: 8px;
 }
 .photos-grid .photo-thumb {
   position: relative;
-  aspect-ratio: 1;
+  aspect-ratio: 16/9;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -180,7 +180,7 @@ input:focus { border-color: var(--primary); }
   cursor: pointer;
 }
 .photo-add {
-  aspect-ratio: 1;
+  aspect-ratio: 16/9;
   background: var(--surface2);
   border: 2px dashed var(--text2);
   border-radius: 8px;
