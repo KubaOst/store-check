@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Store Check</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Settings screen -->
+    <div id="settings-screen" class="screen hidden">
+      <header>
+        <button class="back-btn" onclick="app.showScreen('sessions')">&larr;</button>
+        <h1>Ustawienia</h1>
+      </header>
+      <div class="content pad">
+        <label>Airtable Personal Access Token</label>
+        <input type="password" id="settings-pat" placeholder="pat..." autocomplete="off">
+        <label>Base ID</label>
+        <input type="text" id="settings-base" placeholder="app..." autocomplete="off">
+        <p class="hint">Znajdziesz w Airtable &rarr; Help &rarr; API documentation.<br>Base ID zaczyna sie od "app".</p>
+        <button class="btn primary full" onclick="app.saveSettings()">Zapisz</button>
+        <div id="settings-status"></div>
+      </div>
+    </div>
+
+    <!-- Sessions list -->
+    <div id="sessions-screen" class="screen">
+      <header>
+        <h1>Store Check</h1>
+        <button class="icon-btn" onclick="app.showScreen('settings')">&#9881;</button>
+      </header>
+      <div class="content">
+        <div id="sessions-list"></div>
+        <div id="sessions-empty" class="empty-state hidden">
+          <p>Brak sesji. Utwórz pierwszą!</p>
+        </div>
+      </div>
+      <div class="bottom-bar">
+        <button class="btn primary full" onclick="app.createSession()">+ Nowa sesja</button>
+      </div>
+    </div>
+
+    <!-- Entries list -->
+    <div id="entries-screen" class="screen hidden">
+      <header>
+        <button class="back-btn" onclick="app.showScreen('sessions')">&larr;</button>
+        <h1 id="entries-title">Sesja</h1>
+      </header>
+      <div class="content">
+        <div id="entries-list"></div>
+        <div id="entries-empty" class="empty-state hidden">
+          <p>Brak wpisów. Dodaj pierwsze zdjęcie!</p>
+        </div>
+      </div>
+      <div class="bottom-bar two-buttons">
+        <button class="btn secondary" onclick="app.generatePDF()" id="pdf-btn">PDF</button>
+        <button class="btn primary" onclick="app.showAddForm()">+ Zdjęcie</button>
+      </div>
+    </div>
+
+    <!-- Add/Edit entry form -->
+    <div id="form-screen" class="screen hidden">
+      <header>
+        <button class="back-btn" onclick="app.hideForm()">&larr;</button>
+        <h1 id="form-title">Nowy wpis</h1>
+        <button class="icon-btn danger hidden" id="delete-btn" onclick="app.deleteEntry()">&#128465;</button>
+      </header>
+      <div class="content pad">
+        <div id="photo-preview" class="photo-preview" onclick="document.getElementById('photo-input').click()">
+          <span>Kliknij aby zrobić zdjęcie</span>
+          <img id="preview-img" class="hidden">
+        </div>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" class="hidden" onchange="app.onPhotoSelected(event)">
+
+        <label>Marka *</label>
+        <input type="text" id="field-brand" placeholder="Nazwa marki" list="brands-list" autocomplete="off">
+        <datalist id="brands-list"></datalist>
+
+        <label>Dystrybutor</label>
+        <input type="text" id="field-distributor" placeholder="Dystrybutor (opcjonalnie)" list="distributors-list" autocomplete="off">
+        <datalist id="distributors-list"></datalist>
+
+        <label>WWW</label>
+        <input type="url" id="field-www" placeholder="https://..." autocomplete="off">
+
+        <button class="btn primary full" id="save-btn" onclick="app.saveEntry()">Zapisz</button>
+        <div id="form-status"></div>
+      </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p id="loading-text">Ładowanie...</p>
+    </div>
+
+    <!-- Offline indicator -->
+    <div id="offline-bar" class="offline-bar hidden">
+      Offline — <span id="pending-count">0</span> wpisów czeka na sync
+    </div>
+  </div>
+
+  <script src="lib/jspdf.umd.min.js"></script>
+  <script src="airtable.js"></script>
+  <script src="offline.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
